@@ -1,0 +1,15 @@
+# editor artifacts
+*~
+*.swp
+
+# generated binaries
+*.class
+
+# output directory
+target/*
+
+# IDEA user-specific project files
+.idea/uiDesigner.xml
+.idea/workspace.xml
+.idea/tasks.xml
+
