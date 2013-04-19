@@ -65,15 +65,15 @@ public class Hostess {
             if (first.startsWith("#"))          // a comment line; skip
                 return;
             if (!VALIDATOR.validate(first)) {   // not a valid address (could be an empty string)
-                LOG.warn("Not a valid address: " + first);
+                LOG.warn(String.format("(file pos: %d) Not a valid address: %s", key.get(), first));
                 return;
             }
             if (tokens.length == 1) {           // this line only contains a (valid) address
-                LOG.warn("Record on line " + key.toString() + " only contains an address");
+                LOG.warn(String.format("(file pos: %d) Record only contains an address: %s", key.get(), first));
                 return;
             }
             if (tokens[1].startsWith("#")) {    // the next token is the start of a comment (no address, either)
-                LOG.warn("Record on line " + key.toString() + " only contains an address (with inline comment)");
+                LOG.warn(String.format("(file pos: %d) Record only contains an address (with inline comment): %s", key.get(), first));
                 return;
             }
 
