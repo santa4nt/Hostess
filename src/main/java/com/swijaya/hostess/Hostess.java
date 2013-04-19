@@ -1,5 +1,7 @@
 package com.swijaya.hostess;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -41,6 +43,8 @@ public class Hostess {
 
     public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, IntWritable> {
 
+        private static final Log LOG = LogFactory.getLog(Map.class);
+
         private static final IpAddressValidator VALIDATOR = new IpAddressValidator();
         private static final IntWritable ONE = new IntWritable(1);
 
@@ -56,18 +60,20 @@ public class Hostess {
 
             // examine the first token: if valid, it is either an address or comment character ('#')
             String first = tokens[0];
+            if (first.equals(""))
+                return;
             if (first.startsWith("#"))          // a comment line; skip
                 return;
-            if (!VALIDATOR.validate(first)) {   // not a valid address
-                // TODO: log
+            if (!VALIDATOR.validate(first)) {   // not a valid address (could be an empty string)
+                LOG.warn("Not a valid address: " + first);
                 return;
             }
             if (tokens.length == 1) {           // this line only contains a (valid) address
-                // TODO: log
+                LOG.warn("Record on line " + key.toString() + " only contains an address");
                 return;
             }
             if (tokens[1].startsWith("#")) {    // the next token is the start of a comment (no address, either)
-                // TODO: log
+                LOG.warn("Record on line " + key.toString() + " only contains an address (with inline comment)");
                 return;
             }
 
