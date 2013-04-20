@@ -92,14 +92,14 @@ public class HostessTest {
     }
 
     @Test
-    public void testMapper_ValidEntries_1() {
+    public void testMapper_ValidLine_1() {
         mapDriver.withInput(ZERO, new Text("127.0.0.1\tlocalhost"))
                 .withOutput(new Text("127.0.0.1->localhost"), ONE)
                 .runTest();
     }
 
     @Test
-    public void testMapper_ValidEntries_2() {
+    public void testMapper_ValidLine_2() {
         mapDriver.withInput(ZERO, new Text("\t::1\tlocalhost\thostname"))
                 .withOutput(new Text("::1->localhost"), ONE)
                 .withOutput(new Text("::1->hostname"), ONE)
@@ -107,14 +107,14 @@ public class HostessTest {
     }
 
     @Test
-    public void testMapper_ValidEntries_3() {
+    public void testMapper_ValidLine_3() {
         mapDriver.withInput(ZERO, new Text("128.0.0.1\tlocalhost    # this is a comment"))
                 .withOutput(new Text("128.0.0.1->localhost"), ONE)
                 .runTest();
     }
 
     @Test
-    public void testMapper_ValidEntries_4() {
+    public void testMapper_ValidLine_4() {
         mapDriver.withInput(ZERO, new Text("\t::1\tlocalhost\thostname\t#this is a comment"))
                 .withOutput(new Text("::1->localhost"), ONE)
                 .withOutput(new Text("::1->hostname"), ONE)
@@ -122,7 +122,7 @@ public class HostessTest {
     }
 
     @Test
-    public void testReducer_SingleEntry() {
+    public void testReducer_SingleRecord() {
         List<IntWritable> values = new ArrayList<IntWritable>();
         values.add(ONE);
         reduceDriver.withInput(new Text("::1->localhost"), values)
@@ -131,10 +131,12 @@ public class HostessTest {
     }
 
     @Test
-    public void testReducer_MultipleEntries() {
+    public void testReducer_GroupedRecords() {
+        // this indicates duplicates in the original input set
         List<IntWritable> values = new ArrayList<IntWritable>();
         values.add(ONE);
         values.add(ONE);
+        // expect only one final record in the output
         reduceDriver.withInput(new Text("127.0.0.1->localhost"), values)
                 .withOutput(new Text("127.0.0.1"), new Text("localhost"))
                 .runTest();

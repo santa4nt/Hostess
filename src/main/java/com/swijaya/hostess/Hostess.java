@@ -71,7 +71,7 @@ public class Hostess {
                 LOG.warn(String.format("(file pos: %d) Not a valid address: %s", key.get(), first));
                 return;
             }
-            if (tokens.length == 1) {           // this line only contains a (valid) address
+            if (tokens.length == 1) {           // this line only contains a single (valid) address
                 LOG.warn(String.format("(file pos: %d) Record only contains an address: %s", key.get(), first));
                 return;
             }
@@ -101,8 +101,8 @@ public class Hostess {
 
         @Override
         protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            // ignore values; multiple "ONE" values within the iterable means that there were duplicate mappings
-            // from the input files, in which case we emit in the final output a single mapping
+            // ignore values; multiple "ONE" values within the iterable means that there were duplicate records
+            // from the input files, in which case we emit in the final output a single record
             String[] tokens = key.toString().split("->");   // decouple "[address]->[name]" mapping
             if (tokens.length != 2) {
                 assert false;
