@@ -55,7 +55,7 @@ public class Hostess {
 
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            String line = value.toString();
+            String line = value.toString().trim();  // strip first leading and trailing whitespaces
             String[] tokens = line.split("\\s+");   // tokenize line with whitespace characters as delimiters
 
             if (tokens.length == 0)
@@ -63,7 +63,7 @@ public class Hostess {
 
             // examine the first token: if valid, it is either an address or comment character ('#')
             String first = tokens[0];
-            if (first.equals(""))
+            if (first.equals(""))               // this is the case with an empty line; skip
                 return;
             if (first.startsWith("#"))          // a comment line; skip
                 return;
@@ -86,7 +86,7 @@ public class Hostess {
                 String token = tokens[i];
                 // the next token could be a comment character ('#'), in which case, ignore the rest of them
                 if (token.startsWith("#"))
-                    return;
+                    break;
                 mapping.set(first + "->" + token);
                 context.write(mapping, ONE);
             }
@@ -101,17 +101,16 @@ public class Hostess {
 
         @Override
         protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            for (IntWritable value : values) {
-                // decouple "[address]->[name]" mapping
-                String[] tokens = key.toString().split("->");
-                if (tokens.length != 2) {
-                    assert false;
-                    continue;
-                }
-                address.set(tokens[0]);
-                name.set(tokens[1]);
-                context.write(address, name);
+            // ignore values; multiple "ONE" values within the iterable means that there were duplicate mappings
+            // from the input files, in which case we emit in the final output a single mapping
+            String[] tokens = key.toString().split("->");   // decouple "[address]->[name]" mapping
+            if (tokens.length != 2) {
+                assert false;
+                return;
             }
+            address.set(tokens[0]);
+            name.set(tokens[1]);
+            context.write(address, name);
         }
 
     }
