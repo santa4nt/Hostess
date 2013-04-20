@@ -2,14 +2,17 @@ package com.swijaya.hostess;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.regex.Pattern;
 
 public class Hostess {
@@ -41,7 +44,7 @@ public class Hostess {
 
     }
 
-    public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, IntWritable> {
+    public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
 
         private static final Log LOG = LogFactory.getLog(Map.class);
 
@@ -51,7 +54,7 @@ public class Hostess {
         private Text mapping = new Text();      // for output key: "[address]->[name]"
 
         @Override
-        public void map(LongWritable key, Text value, OutputCollector<Text, IntWritable> output, Reporter reporter) throws IOException {
+        protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
             String[] tokens = line.split("\\s+");   // tokenize line with whitespace characters as delimiters
 
@@ -85,20 +88,20 @@ public class Hostess {
                 if (token.startsWith("#"))
                     return;
                 mapping.set(first + "->" + token);
-                output.collect(mapping, ONE);
+                context.write(mapping, ONE);
             }
         }
 
     }
 
-    public static class Reduce extends MapReduceBase implements Reducer<Text, IntWritable, Text, Text> {
+    public static class Reduce extends Reducer<Text, IntWritable, Text, Text> {
 
         private Text address = new Text();
         private Text name = new Text();
 
         @Override
-        public void reduce(Text key, Iterator<IntWritable> values, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
-            while (values.hasNext()) {
+        protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            for (IntWritable value : values) {
                 // decouple "[address]->[name]" mapping
                 String[] tokens = key.toString().split("->");
                 if (tokens.length != 2) {
@@ -107,33 +110,29 @@ public class Hostess {
                 }
                 address.set(tokens[0]);
                 name.set(tokens[1]);
-                output.collect(address, name);
-                // consume next record
-                values.next();
+                context.write(address, name);
             }
         }
 
     }
 
     public static void main(String[] args) throws Exception {
-        JobConf conf = new JobConf(Hostess.class);
-        conf.setJobName("hostess");
+        Configuration conf = new Configuration();
+        String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
+        Job job = new Job(conf, "Combine and flatten HOSTS files");
 
-        conf.setMapOutputKeyClass(Text.class);
-        conf.setMapOutputValueClass(IntWritable.class);
-        conf.setOutputKeyClass(Text.class);
-        conf.setOutputValueClass(Text.class);
+        job.setJarByClass(Hostess.class);
+        job.setMapperClass(Map.class);
+        job.setReducerClass(Reduce.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(IntWritable.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
 
-        conf.setMapperClass(Map.class);
-        conf.setReducerClass(Reduce.class);
+        FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+        FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 
-        conf.setInputFormat(TextInputFormat.class);
-        conf.setOutputFormat(TextOutputFormat.class);
-
-        FileInputFormat.setInputPaths(conf, new Path(args[0]));
-        FileOutputFormat.setOutputPath(conf, new Path(args[1]));
-
-        JobClient.runJob(conf);
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 
 }
